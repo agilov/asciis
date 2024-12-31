@@ -22,8 +22,8 @@ type game struct {
 	stats        *stats
 	maxFrameTime time.Duration
 	input        *input
-	currentMino  *mino
-	nextMino     *mino
+	currentMino  *Mino
+	nextMino     *Mino
 }
 
 func NewGame(width, height, fps int) *game {

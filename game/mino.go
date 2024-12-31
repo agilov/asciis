@@ -1,165 +1,176 @@
 package game
 
-// mino is a thing that is moving around and combines
-type mino struct {
-	pos        position
-	box        box
-	level      *level
-	data       []byte
-	renderData []byte
-	rotation   int
+type Tile struct {
+	Char byte
 }
 
-type box struct {
-	width, height int
-}
-type position struct {
-	x, y int
+// Mino is a thing that is moving around and combines
+type Mino struct {
+	Position Position
+	Box      Box
+	level    *level
+	Tiles    []Tile
+	Rotation int
 }
 
-func newMino(lvl *level) *mino {
-	m := &mino{
-		rotation:   0,
-		level:      lvl,
-		pos:        position{4, 4},
-		box:        box{3, 2},
-		data:       []byte{'1', '2', '3', '4'},
-		renderData: []byte{'a', 'b', 'C', 'd', ' ', ' '},
+type Box struct {
+	Width, Height int
+}
+type Position struct {
+	X, Y int
+}
+
+func newMino(lvl *level) *Mino {
+	m := &Mino{
+		Rotation: 0,
+		level:    lvl,
+		Position: Position{0, 0},
+		Box:      Box{4, 4},
+		Tiles: []Tile{
+			{'1'}, {'2'}, {'3'}, {'4'},
+			{'1'}, {' '}, {' '}, {'4'},
+			{'1'}, {'2'}, {'3'}, {'4'},
+			{'1'}, {'2'}, {'3'}, {'4'},
+		},
 	}
-	m.writeRenderData()
 	go m.sink()
 	return m
 }
 
-func (m *mino) sink() {
-	m.pos.y++
-	if m.pos.y+m.box.height >= m.level.height {
-		m.pos.y--
+func (m *Mino) sink() {
+	m.Position.Y++
+	if m.Position.Y+m.Box.Height >= m.level.height {
+		m.Position.Y--
 	}
 }
 
-func (m *mino) rotate(right bool) {
+func (m *Mino) Rotate(right bool) {
 	if right {
-		m.rotation++
+		m.Rotation++
 	} else {
-		m.rotation--
+		m.Rotation--
 	}
-	if m.rotation > 3 {
-		m.rotation = 0
+	if m.Rotation > 3 {
+		m.Rotation = 0
 	}
-	if m.rotation < 0 {
-		m.rotation = 3
+	if m.Rotation < 0 {
+		m.Rotation = 3
 	}
-	m.writeRenderData()
-	m.box = box{m.box.height, m.box.width}
-	if m.pos.x+m.box.width >= m.level.width-1 {
-		m.pos.x--
-	}
-}
-
-func (m *mino) writeRenderData() {
-	a, b, c, d := m.data[0], m.data[1], m.data[2], m.data[3]
-	switch m.rotation {
-	case 0:
-		m.renderData[0] = a
-		m.renderData[1] = b
-		m.renderData[2] = ' '
-		m.renderData[3] = ' '
-		m.renderData[4] = c
-		m.renderData[5] = d
-	case 1:
-		m.renderData[0] = ' '
-		m.renderData[1] = a
-		m.renderData[2] = c
-		m.renderData[3] = b
-		m.renderData[4] = d
-		m.renderData[5] = ' '
-	case 2:
-		m.renderData[0] = d
-		m.renderData[1] = c
-		m.renderData[2] = ' '
-		m.renderData[3] = ' '
-		m.renderData[4] = b
-		m.renderData[5] = a
-	case 3:
-		m.renderData[0] = ' '
-		m.renderData[1] = d
-		m.renderData[2] = b
-		m.renderData[3] = c
-		m.renderData[4] = a
-		m.renderData[5] = ' '
+	if right {
+		m.rotateRight()
+	} else {
+		m.rotateLeft()
 	}
 }
 
-func (m *mino) render() {
-	data := m.renderData
-	for i, x, y := 0, m.pos.x, m.pos.y; ; i++ {
-		m.level.data[y][x] = data[i]
+func (m *Mino) rotateLeft() {
+	h := m.Box.Height
+	w := m.Box.Width
+	toH := w
+	toW := h
+	result := make([]Tile, len(m.Tiles))
+	for i := 0; i < len(result); i++ {
+		colPos := i / w
+		colNum := i % w
+		rowToPos := colPos
+		rowToNum := toH - colNum - 1
+		j := toW*rowToNum + rowToPos
+		result[j] = m.Tiles[i]
+	}
+	m.Tiles = result
+	m.Box.Height = toH
+	m.Box.Width = toW
+}
+
+func (m *Mino) rotateRight() {
+	h := m.Box.Height
+	w := m.Box.Width
+	toH := w
+	toW := h
+	//col, row := 1, h
+	result := make([]Tile, len(m.Tiles))
+	for i := 0; i < len(result); i++ {
+		rowNum := i / w
+		rowPos := i % w
+		colToPos := rowPos
+		colToNum := toW - rowNum - 1
+		j := toW*colToPos + colToNum
+		result[j] = m.Tiles[i]
+	}
+	m.Tiles = result
+	m.Box.Height = toH
+	m.Box.Width = toW
+}
+
+func (m *Mino) render() {
+	data := m.Tiles
+	for i, x, y := 0, m.Position.X, m.Position.Y; ; i++ {
+		m.level.data[y][x] = data[i].Char
 		x++
-		if x >= m.pos.x+m.box.width {
-			x = m.pos.x
+		if x >= m.Position.X+m.Box.Width {
+			x = m.Position.X
 			y++
 		}
-		if y >= m.pos.y+m.box.height {
+		if y >= m.Position.Y+m.Box.Height {
 			return
 		}
 	}
 }
 
-func (m *mino) clear() {
-	for x, y := m.pos.x, m.pos.y; ; {
+func (m *Mino) clear() {
+	for x, y := m.Position.X, m.Position.Y; ; {
 		m.level.data[y][x] = NOTHING
 		x++
-		if x >= m.pos.x+m.box.width {
-			x = m.pos.x
+		if x >= m.Position.X+m.Box.Width {
+			x = m.Position.X
 			y++
 		}
-		if y >= m.pos.y+m.box.height {
+		if y >= m.Position.Y+m.Box.Height {
 			return
 		}
 	}
 }
 
-func (m *mino) update(event event) {
+func (m *Mino) update(event event) {
 	if event.Name() == "keyPressed" {
 		if event.Key() == 'd' {
-			m.pos.x++
+			m.Position.X++
 		}
 		if event.Key() == 'a' {
-			m.pos.x--
+			m.Position.X--
 		}
 		if event.Key() == 'w' {
-			m.pos.y--
+			m.Position.Y--
 		}
 		if event.Key() == 's' {
-			m.pos.y++
+			m.Position.Y++
 		}
 		if event.Key() == arrowLeft {
-			m.pos.x--
+			m.Position.X--
 		}
 		if event.Key() == arrowRight {
-			m.pos.x++
+			m.Position.X++
 		}
 		if event.Key() == arrowUp {
-			m.rotate(false)
+			m.Rotate(false)
 		}
 		if event.Key() == arrowDown {
-			m.rotate(true)
+			m.Rotate(true)
 		}
 		if event.Key() == '\n' {
-			m.pos.y = m.level.height - m.box.height - 1
+			m.Position.Y = m.level.height - m.Box.Height - 1
 		}
 	}
-	if m.pos.x <= 0 {
-		m.pos.x++
+	if m.Position.X <= 0 {
+		m.Position.X++
 	}
-	if m.pos.y <= 0 {
-		m.pos.y++
+	if m.Position.Y <= 0 {
+		m.Position.Y++
 	}
-	if m.pos.x+m.box.width >= m.level.width {
-		m.pos.x--
+	if m.Position.X+m.Box.Width >= m.level.width {
+		m.Position.X--
 	}
-	if m.pos.y+m.box.height >= m.level.height {
-		m.pos.y--
+	if m.Position.Y+m.Box.Height >= m.level.height {
+		m.Position.Y--
 	}
 }

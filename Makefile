@@ -1,3 +1,3 @@
 run:
-	@go build -o bin/nag .
-	@./bin/nag
+	@go build -o bin/game .
+	@./bin/game
